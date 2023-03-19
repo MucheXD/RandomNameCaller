@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>bannerWidgetClass</class>
+ <widget class="QWidget" name="bannerWidgetClass">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>500</width>
+    <height>30</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <widget class="QLabel" name="mainTitle">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>500</width>
+     <height>30</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QLabel
+{
+	font: 10.5pt &quot;微软雅黑&quot;;
+	color: #ffffff;
+	border-style: none;
+	background-color:  #0064c8;
+	border-radius: 0px;
+}
+QLabel[styleType=&quot;info&quot;]
+{
+	color: #000000;
+	background-color: #e0e0e0;
+}
+QLabel[styleType=&quot;notice&quot;]
+{
+	color: #ffffff;
+	background-color:  #0064c8;
+}
+QLabel[styleType=&quot;warning&quot;]
+{
+	color: #ffffff;
+	background-color:  #beab00;
+}
+QLabel[styleType=&quot;critical&quot;]
+{
+	color: #ffffff;
+	background-color:  #c80000;
+}</string>
+   </property>
+   <property name="text">
+    <string>text.banner.mainTitle.title</string>
+   </property>
+   <property name="scaledContents">
+    <bool>false</bool>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
+   <property name="styleType" stdset="0">
+    <string>normal</string>
+   </property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
