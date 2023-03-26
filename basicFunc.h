@@ -33,8 +33,9 @@ QString qConfig_readKey(QString key, QString configFileName = QCoreApplication::
 bool qConfig_writeKey(QString configFile, QString key, QString data);
 std::vector<MemberData> getMemberData(QString rawDataText);
 //std::vector<MemberData> getMemberData_Xml(QString rawDataText);
-void saveMemberData(QFile* file, std::vector<MemberData> memberData, short lastRunningMode);
-bool saveMemberData_json(QString fileName, std::vector<MemberData> memberData);
+//void saveMemberData(QFile* file, std::vector<MemberData> memberData, short lastRunningMode);
+bool saveMemberData(QString fileName, std::vector<MemberData> memberData);
+bool getMemberData_new(QString listFileName, std::vector<MemberData>* memberDataList);
 
 class Network
 {
