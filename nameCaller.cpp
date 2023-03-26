@@ -27,8 +27,8 @@ nameCaller::nameCaller(QWidget *parent)
     readMemberDataFromFile(QCoreApplication::applicationDirPath() + "/list.dcf");
     
 
-    //DEBUG XML保存测试代码
-    saveMemberData_json("list_xml.xml", memberData);
+    //DEBUG JSON保存测试代码
+    //saveMemberData("list_json.mtd", memberData);
 
     //weightInit(false);
 

@@ -3,6 +3,14 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+# spPrivate-Info files
+*.xls
+*.xlsx
+*.dcf
+*.json
+*.mtd
+*.mbd
+
 # User-specific files
 *.rsuser
 *.suo
