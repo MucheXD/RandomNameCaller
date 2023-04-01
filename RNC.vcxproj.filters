@@ -53,7 +53,7 @@
     </QtTranslation>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="标准存储大小.txt">
+    <Text Include="标准定义说明.txt">
       <Filter>技术文档</Filter>
     </Text>
   </ItemGroup>

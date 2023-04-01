@@ -35,7 +35,7 @@ std::vector<MemberData> getMemberData(QString rawDataText);
 //std::vector<MemberData> getMemberData_Xml(QString rawDataText);
 //void saveMemberData(QFile* file, std::vector<MemberData> memberData, short lastRunningMode);
 bool saveMemberData(QString fileName, std::vector<MemberData> memberData);
-bool getMemberData_new(QString listFileName, std::vector<MemberData>* memberDataList);
+int8_t getMemberData_new(QString listFileName, std::vector<MemberData>* memberDataList);
 
 class Network
 {

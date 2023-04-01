@@ -8,12 +8,14 @@
 *.xlsx
 *.dcf
 *.json
+*.xml
 *.mtd
 *.mbd
 
 #backup files
 *.[B/b][A/a][K/k]
 [B/b][A/a][K/k]/
+Bak/
 
 # User-specific files
 *.rsuser

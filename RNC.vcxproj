@@ -240,7 +240,7 @@
     <QtTranslation Include="zh_cn.ts" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="标准存储大小.txt" />
+    <Text Include="标准定义说明.txt" />
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="basicFunc.h" />

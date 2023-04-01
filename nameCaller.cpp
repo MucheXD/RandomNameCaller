@@ -15,8 +15,6 @@ nameCaller::nameCaller(QWidget *parent)
 
     reUi();
 
-
-
     //QFile styleSheetFile;
     //styleSheetFile.setFileName(QCoreApplication::applicationDirPath() + "/default_light.qss");
     //styleSheetFile.open(QIODevice::ReadOnly);
@@ -25,10 +23,12 @@ nameCaller::nameCaller(QWidget *parent)
 
     //TODO 此处固定了成员表
     readMemberDataFromFile(QCoreApplication::applicationDirPath() + "/list.dcf");
-    
 
     //DEBUG JSON保存测试代码
-    //saveMemberData("list_json.mtd", memberData);
+    saveMemberData("list_json.mtd", memberData);
+
+    getMemberData_new("list_json.mtd", &memberData);
+
 
     //weightInit(false);
 
@@ -82,18 +82,7 @@ void nameCaller::readMemberDataFromFile(QString fileName)
 
 void nameCaller::saveMemberDataToFile(QString fileName)
 {
-    QFile memberDataFile;
-    memberDataFile.setFileName(fileName);
-    memberDataFile.open(QIODevice::ReadWrite | QIODevice::Truncate);
-    if (memberDataFile.isReadable() == false)
-    {
-        QMessageBox::critical(this, tr("名单读取失败"), tr("无法打开指定名单: list.dcf") + "\n" + tr("请检查该文件是否已移动、删除或无法访问"));
-        exit(-1);
-    }
-    QString memberDataText = memberDataFile.read(10240);
-    memberDataText = qText_clearRFormat(memberDataText);
-    saveMemberData(&memberDataFile, memberData, -1);
-    memberDataFile.close();
+    saveMemberData("list.mtd", memberData);
 }
 
 void nameCaller::changeMode(void)

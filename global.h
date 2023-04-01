@@ -1,8 +1,9 @@
 #pragma once
 #include <QString>
 
-const ushort PROGRAMBUILDVER = 0x0018;
-const QString PROGRAMVERSION = "0.24";
+const uint16_t PROGRAMMAGORVER = 0x0000;
+const uint16_t PROGRAMMINORVER = 0x0000;
+const uint16_t PROGRAMBUILDVER = 0x0018;
 const QString PROGRAMTEXTID = "RNC_RandomNameCaller";
 
 struct MemberData

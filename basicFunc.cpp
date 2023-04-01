@@ -208,17 +208,47 @@ std::vector<MemberData> getMemberData(QString rawDataText)
 	return result;
 }
 
-bool getMemberData_new(QString listFileName, std::vector<MemberData> *memberDataList)
+int8_t getMemberData_new(QString listFileName, std::vector<MemberData> *memberDataList)
 {
 	QFile listDataFile;
 	listDataFile.setFileName(listFileName);
 	if (!listDataFile.open(QIODevice::ReadOnly) || listDataFile.size() >= 0x100000)
-		return false;//无法打开或文件大小超过1MB的情况为异常
+		return -1;//无法打开或文件大小超过1MB的情况为异常
 	QString mtdTextData = listDataFile.readAll();
-	int nPos = 0;
 	QString nSubBlockText;
 	nSubBlockText = qText_Between(mtdTextData,"<manifest>","</manifest>");
-	//if(nSubBlockText) regexp=(?<=\[for=)\S*(?=\]) ([for=%])
+	QRegularExpression regExp;
+	regExp.setPattern("(?<=\\[for=)\\S*(?=\\])");
+	if (regExp.match(nSubBlockText).captured() != PROGRAMTEXTID)
+		return -2;//配置与程序不符
+	regExp.setPattern("(?<=\\[createrVersion=)\\S*(?=\\])");
+	if (regExp.match(nSubBlockText).captured().toUShort() != PROGRAMBUILDVER)
+		return -3;//配置与版本不符//TODO此处限制了唯一版本，应有版本兼容性
+	nSubBlockText = qText_Between(mtdTextData, "<data>", "</data>");
+	regExp.setPattern("(?<=\\[eptBlocks=)\\S*(?=\\])");
+	const uint16_t eptBlocks = regExp.match(nSubBlockText).captured().toUShort();
+	regExp.setPattern("(?<=\\[eptBytesPerBlock=)\\S*(?=\\])");
+	const uint16_t bytesPerEptBlock = regExp.match(nSubBlockText).captured().toUShort();
+	nSubBlockText = qText_Between(nSubBlockText, "[data=", "]");
+	QByteArray mainData = QByteArray::fromBase64(nSubBlockText.toUtf8());
+	nSubBlockText.clear();
+	nSubBlockText.resize(0);
+	const QByteArray eptKeyWord = mainData.left(eptBlocks);
+	mainData.remove(0, eptBlocks);
+	for (int nPos = 0; nPos < mainData.size(); nPos++)
+		mainData[nPos] ^= eptKeyWord[nPos / bytesPerEptBlock];//再次异或比特，获得原数据
+	int nPos = 0;
+	for (nPos = 0; nPos < bytesPerEptBlock && mainData[mainData.size() - nPos - 1] != '\0'; nPos++) {};
+	mainData.resize(mainData.size() - nPos - 1);//将末尾原先因对齐而增加的字节去除，以\0为标志
+	//读主数据体(JSON格式)
+	QJsonDocument jsondoc;
+	QJsonParseError jsonErrorChecker;
+	jsondoc = QJsonDocument::fromJson(mainData, &jsonErrorChecker);
+	if (jsonErrorChecker.error != 0)
+		return 0x0F00 + jsonErrorChecker.error;
+	QJsonObject jsonobj_data;
+	jsonobj_data.value("LastRunningMode").toInt();
+	return 0;
 }
 
 //这里是历史——曾经的名单写入模块
