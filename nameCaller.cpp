@@ -21,16 +21,18 @@ nameCaller::nameCaller(QWidget *parent)
     //const QString styleSheetText = QLatin1String(styleSheetFile.readAll());
     //qApp->setStyleSheet(styleSheetText);
 
-    //TODO 此处固定了成员表
-    readMemberDataFromFile(QCoreApplication::applicationDirPath() + "/list.dcf");
-
     //DEBUG JSON保存测试代码
-    saveMemberData("list_json.mtd", memberData);
+    //TODO IllegalUTF8String问题待解决；将数据建类；
 
-    getMemberData_new("list_json.mtd", &memberData);
+    readMemberDataFromFile("list.mtd");
+
+    std::vector<MemberData> importData;
+    importMemberData("import.csv", &importData);
+
+    saveMemberData("list.mtd", &importData);
 
 
-    //weightInit(false);
+    weightInit(false);
 
     //DEBUG 效率测试
     /*
@@ -65,24 +67,13 @@ void nameCaller::reUi()
 
 void nameCaller::readMemberDataFromFile(QString fileName)
 {
-    QFile memberDataFile;
-    memberDataFile.setFileName(fileName);
-    memberDataFile.open(QIODevice::ReadOnly);
-    if (memberDataFile.isReadable() == false)
-    {
-        QMessageBox::critical(this, tr("名单读取失败"), tr("无法打开指定名单: list.dcf") + "\n" + tr("请检查该文件是否已移动、删除或无法访问"));
-        exit(-1);
-    }
-    QString memberDataText = memberDataFile.read(10240);
-    memberDataText = qText_clearRFormat(memberDataText);
-    memberDataFile.close();
-    memberData = getMemberData(memberDataText);
+    getMemberData(fileName, &memberData);
     return;
 }
 
 void nameCaller::saveMemberDataToFile(QString fileName)
 {
-    saveMemberData("list.mtd", memberData);
+    saveMemberData("list.mtd", &memberData);
 }
 
 void nameCaller::changeMode(void)
@@ -297,7 +288,7 @@ void nameCaller::redistributeWeight(ushort selectedMember)//根据抽取过的�
 
 void nameCaller::weightInit(bool isAbnormal)//初始化权重 isAbnormal标明了此次重置是否是异常的
 {
-    ushort nowNum = 0;
+    uint16_t nowNum = 0;
     if (isAbnormal)
     {
         Banner* banner = new Banner(this);
@@ -305,6 +296,12 @@ void nameCaller::weightInit(bool isAbnormal)//初始化权重 isAbnormal标明�
         //QMessageBox::critical(this,tr("错误"),tr("执行操作时发生未知错误")+"\n" + tr("我们已经尝试重置了权重表，如果该问题继续发生，请求助程序管理员。"));
     }
     //为每个成员分配权重
+    if (memberData.size() == 0)
+    {
+        Banner* banner = new Banner(this);
+        banner->showBanner("critical", "名单内没有成员!请检查名单...", this->width(), 5000, false);
+        return;
+    }
     while (nowNum <= memberData.size() - 1)
     {
         if (nowRunningMode == 0)

@@ -31,11 +31,9 @@ int qJson_findCurrentEnd(QString text, int nPos, QString sMark, QString eMark);
 bool qFile_createDir(QString path);
 QString qConfig_readKey(QString key, QString configFileName = QCoreApplication::applicationDirPath() + "/LUD.dcf");
 bool qConfig_writeKey(QString configFile, QString key, QString data);
-std::vector<MemberData> getMemberData(QString rawDataText);
-//std::vector<MemberData> getMemberData_Xml(QString rawDataText);
-//void saveMemberData(QFile* file, std::vector<MemberData> memberData, short lastRunningMode);
-bool saveMemberData(QString fileName, std::vector<MemberData> memberData);
-int8_t getMemberData_new(QString listFileName, std::vector<MemberData>* memberDataList);
+bool saveMemberData(QString fileName, const std::vector<MemberData> *memberData);
+int8_t getMemberData(QString listFileName, std::vector<MemberData>* memberDataList);
+int8_t importMemberData(QString fileName, std::vector<MemberData>* memberData);
 
 class Network
 {

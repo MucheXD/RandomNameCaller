@@ -175,40 +175,7 @@ QString Network::getHttpHeader(QString header)
 	}
 }
 
-std::vector<MemberData> getMemberData(QString rawDataText)
-{
-	QString subString;
-	UINT32 readPos = 0;
-	QByteArray data = qText_Between(rawDataText, "<data>", "</data>", 0).toUtf8();//定位data键
-	data = QByteArray::fromBase64(data);//base64解码
-	const char antiReadKey = data.at(0);//读取混淆字节(首字节)
-	data.remove(0, 1);//删除混淆字节
-	int nConvPos = 0;
-	while (nConvPos <= data.size() - 1)//反混淆循环
-	{
-		char convdByte = data.at(nConvPos) ^ antiReadKey;
-		data.replace(nConvPos, 1, &convdByte, 1);
-		nConvPos += 1;
-	}
-	QString dataText = qText_clearRFormat(data);
-
-	std::vector<MemberData> result;
-	MemberData nowReadingMemberData;
-	readPos = qText_indexOfEnd(dataText, "<memberData>", 0);
-	while (true)
-	{
-		subString = qText_Between(dataText, "[", "]", readPos);
-		nowReadingMemberData.name = qText_Between(subString, "name=", ",", 0);
-		nowReadingMemberData.weight = qText_Between(subString, "weight=", ",", 0).toUShort();
-		result.push_back(nowReadingMemberData);
-		readPos = qText_indexOfEnd(dataText, "]", readPos);
-		if (dataText.indexOf("</memberData>", 0) <= readPos)
-			break;
-	}
-	return result;
-}
-
-int8_t getMemberData_new(QString listFileName, std::vector<MemberData> *memberDataList)
+int8_t getMemberData(QString listFileName, std::vector<MemberData> *memberDataList)
 {
 	QFile listDataFile;
 	listDataFile.setFileName(listFileName);
@@ -235,70 +202,51 @@ int8_t getMemberData_new(QString listFileName, std::vector<MemberData> *memberDa
 	nSubBlockText.resize(0);
 	const QByteArray eptKeyWord = mainData.left(eptBlocks);
 	mainData.remove(0, eptBlocks);
+	int aa = mainData.size();
 	for (int nPos = 0; nPos < mainData.size(); nPos++)
-		mainData[nPos] ^= eptKeyWord[nPos / bytesPerEptBlock];//再次异或比特，获得原数据
+		if(mainData[nPos]!='\0')
+			mainData[nPos] ^= eptKeyWord[nPos / bytesPerEptBlock];//再次异或比特，获得原数据
 	int nPos = 0;
 	for (nPos = 0; nPos < bytesPerEptBlock && mainData[mainData.size() - nPos - 1] != '\0'; nPos++) {};
-	mainData.resize(mainData.size() - nPos - 1);//将末尾原先因对齐而增加的字节去除，以\0为标志
+	if (nPos < bytesPerEptBlock && nPos >= 0)
+		mainData.resize(mainData.size() - nPos - 1);//将末尾原先因对齐而增加的字节去除，以\0为标志
 	//读主数据体(JSON格式)
 	QJsonDocument jsondoc;
 	QJsonParseError jsonErrorChecker;
 	jsondoc = QJsonDocument::fromJson(mainData, &jsonErrorChecker);
 	if (jsonErrorChecker.error != 0)
 		return 0x0F00 + jsonErrorChecker.error;
-	QJsonObject jsonobj_data;
-	jsonobj_data.value("LastRunningMode").toInt();
+	QJsonObject jsonobj_data = jsondoc.object();
+	int lastRunningMode = jsonobj_data.value("LastRunningMode").toInt();//TODO 此处忽略了LastRunningMode的保存值，因为对应的功能未实现
+	QJsonArray jsonarr_memberData = jsonobj_data.value("MemberData").toArray();//memberData主数组 (/MemberData)
+	for (int nPos = 0; nPos < jsonarr_memberData.size(); nPos++)
+	{
+		QJsonObject jsonobj_indMember = jsonarr_memberData.at(nPos).toObject();
+		MemberData nMemberData;
+		nMemberData.name = jsonobj_indMember.value("n").toString();
+		nMemberData.weight = jsonobj_indMember.value("w").toInt();
+		memberDataList->push_back(nMemberData);
+	}
 	return 0;
 }
 
-//这里是历史——曾经的名单写入模块
-//void saveMemberData(QFile* file, std::vector<MemberData> memberData, short lastRunningMode)
-//{
-//	QString writeText;
-//	writeText = QString("<manifest>\n\tfor=RNC_RandomNameCaller\n\tver=%1\n</manifest>\n")
-//				.arg(PROGRAMVERSION);
-//	QString rawDataText;
-//	rawDataText = QString("<info>\n\tlastRunningMode=%\n</info>\n<memberData>\n").arg(lastRunningMode);
-//	ushort nowNum = 0;
-//	while (nowNum <= memberData.size() - 1)
-//	{
-//		rawDataText.append(QString("\t[name=%1,weight=%2]\n").arg(memberData.at(nowNum).name).arg(memberData.at(nowNum).weight));
-//		nowNum += 1;
-//	}
-//	rawDataText.append("</memberData>");
-//	QByteArray data;
-//	const char antiReadCode = __rdtsc() % 0xFF;
-//	int nConvPos = 0;
-//	data = rawDataText.toUtf8();
-//	while (nConvPos <= data.size() - 1)
-//	{
-//		char convdByte = data.at(nConvPos) ^ antiReadCode;
-//		data.replace(nConvPos, 1, &convdByte, 1);
-//		nConvPos += 1;
-//	}
-//	data.insert(0, antiReadCode);
-//	data = data.toBase64();
-//	writeText += QString("<data>\n%1\n</data>").arg(data).toUtf8();
-//	file->write(writeText.toStdString().c_str());
-//}
-
-bool saveMemberData(QString fileName, std::vector<MemberData> memberData)
+bool saveMemberData(QString fileName, const std::vector<MemberData> *memberData)
 {
 	//构建主数据(使用JSON)
 	QJsonDocument jsondoc;
 	QJsonObject jsonobj_data;//data对象 (/)
 	jsonobj_data.insert("LastRunningMode", "-1");
 	QJsonArray jsonarr_memberData;//memberData主数组 (/MemberData)
-	int nPos = 0;
-	while (nPos < memberData.size())
+
+	//UNSURE 23.4.3脱机编辑，未编译 at line294 line318 line329
+	for (auto n_memberData : *memberData)
 	{
-		QJsonObject jsonobj_indMember;//单个成员数据对象 (/data/)
-		jsonobj_indMember.insert("n", memberData.at(nPos).name);
-		jsonobj_indMember.insert("w", memberData.at(nPos).weight);
+		QJsonObject jsonobj_indMember;//新建单成员子对象 (/data/)
+		jsonobj_indMember.insert("n", n_memberData.name);
+		jsonobj_indMember.insert("w", n_memberData.weight);
 		jsonarr_memberData.append(jsonobj_indMember);
-		nPos += 1;
 	}
-	jsonobj_data.insert("MemberData",jsonarr_memberData);
+	jsonobj_data.insert("MemberData", jsonarr_memberData);
 	jsondoc.setObject(jsonobj_data);
 	//主数据拒读化
 	QByteArray mainData = jsondoc.toJson(QJsonDocument::Compact);
@@ -307,19 +255,13 @@ bool saveMemberData(QString fileName, std::vector<MemberData> memberData)
 		mainData.resize((mainData.size() / bytesPerEptBlock + 1) * bytesPerEptBlock);//字节对齐
 	const int eptBlocks = mainData.size() / bytesPerEptBlock;
 	QByteArray eptKeyWord;
-	nPos = 0;
-	while (nPos < eptBlocks)
+	for (int nPos = 0; nPos < eptBlocks; nPos++)
 	{
-		srand(__rdtsc()%0xFFFFFFFF);
+		srand(__rdtsc() % 0xFFFFFFFF);
 		eptKeyWord += rand();
-		nPos += 1;
 	}
-	nPos = 0;
-	while (nPos < mainData.size())
-	{
+	for (int nPos = 0; nPos < mainData.size(); nPos++)
 		mainData[nPos] ^= eptKeyWord[nPos / bytesPerEptBlock];
-		nPos += 1;
-	}
 	mainData.insert(0, eptKeyWord);
 	//构建附加内容(标准MTD)
 	QString mtdStructText = QString("<manifest>\n\t[for=RNC_RandomNameCaller]\n\t[createrVersion=%1]\n</manifest>\n")
@@ -334,6 +276,28 @@ bool saveMemberData(QString fileName, std::vector<MemberData> memberData)
 	listDataFile.write(mtdStructText.toUtf8().toStdString().c_str());
 	listDataFile.close();
 	return true;
+}
+
+int8_t importMemberData(QString fileName, std::vector<MemberData>* memberData)
+{
+	QFileInfo fileInfo;
+	fileInfo.setFile(fileName);
+	QString fileSuffix = fileInfo.suffix();
+	QFile file;
+	file.setFileName(fileName);
+	if (!file.open(QIODevice::ReadOnly) || file.size() >= 0x100000)
+		return -1;
+	if (fileSuffix == "txt" || fileSuffix == "csv");
+	{
+		while (!file.atEnd())
+		{
+			MemberData newMemberData;
+			newMemberData.name = file.readLine().replace("\n", "").replace("\r", "");
+			newMemberData.weight = 0;
+			memberData->push_back(newMemberData);
+		}
+		return 0;
+	}
 }
 
 Banner::Banner(QWidget* parent)
