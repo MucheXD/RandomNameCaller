@@ -36,3 +36,14 @@ private:
     ushort currentMember = 0;
     ushort candidate_slot = 0;
 };
+
+class NameCallerCore
+{
+public:
+    void setMemberData(std::vector<MemberData> memberData);
+    void setCallerMode(int mode);
+    bool initMemberWeight(bool forceToZero = false);
+private:
+    std::vector<MemberData> members;//成员数据
+    int callerMode = 0;
+};

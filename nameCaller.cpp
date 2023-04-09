@@ -1,6 +1,7 @@
 ﻿#include "nameCaller.h"
 #pragma execution_character_set("utf-8")
 
+NameCallerCore callerCore;//初始化核心
 std::vector<MemberData> memberData;//虽然理论可以无限，但是限制65535个
 QTranslator translator;
 
@@ -10,7 +11,7 @@ nameCaller::nameCaller(QWidget *parent)
     ui_mw.setupUi(this);
 
     //TODO 这里为多语言做准备 当前并没有实际用处
-    translator.load(QCoreApplication::applicationDirPath() + "/zh_cn.qm");//默认中文
+    bool isLoadTranslator = translator.load(QCoreApplication::applicationDirPath() + "/zh_cn.qm");//默认中文
     qApp->installTranslator(&translator);
 
     reUi();
@@ -20,17 +21,17 @@ nameCaller::nameCaller(QWidget *parent)
     //styleSheetFile.open(QIODevice::ReadOnly);
     //const QString styleSheetText = QLatin1String(styleSheetFile.readAll());
     //qApp->setStyleSheet(styleSheetText);
-
+    
     //DEBUG JSON保存测试代码
-    //TODO IllegalUTF8String问题待解决；将数据建类；
-
-    readMemberDataFromFile("list.mtd");
 
     std::vector<MemberData> importData;
     importMemberData("import.csv", &importData);
 
     saveMemberData("list.mtd", &importData);
 
+    readMemberDataFromFile("list.mtd");
+
+    //CONTINUE 已经完成了名单读写模块，建立了核心类，但是尚未迁移功能入类。上次完成：nameCaller::readMemberDataFromFile:错误判断
 
     weightInit(false);
 
@@ -67,7 +68,34 @@ void nameCaller::reUi()
 
 void nameCaller::readMemberDataFromFile(QString fileName)
 {
-    getMemberData(fileName, &memberData);
+    std::vector<MemberData> memberData;
+    int8_t retCode = getMemberData(fileName, &memberData);
+    ui_mw.btn_startChoosing->setEnabled(false);
+    if (retCode == 0)
+    {
+        callerCore.setMemberData(memberData);
+        ui_mw.btn_startChoosing->setEnabled(true);
+    }
+    else if (retCode == -1)
+    {
+        Banner* banner = new Banner(this);
+        banner->showBanner("critical", "无法打开名单! 请检查名单是否正确配置且可读...", this->width(), 10000, true);
+    }
+    else if (retCode == -2)
+    {
+        Banner* banner = new Banner(this);
+        banner->showBanner("critical", "名单错误! 这似乎不是正确的RNC名单，请检查...", this->width(), 10000, true);
+    }
+    else if (retCode == -3)
+    {
+        Banner* banner = new Banner(this);
+        banner->showBanner("critical", "无法使用名单! 名单版本不匹配，请联系名单提供者...", this->width(), 10000, true);
+    }
+    else
+    {
+        Banner* banner = new Banner(this);
+        banner->showBanner("critical", QString("名单损坏! RNC无法正确读取这个名单... CODE=%1").arg(retCode), this->width(), 10000, true);
+    }
     return;
 }
 
@@ -320,4 +348,35 @@ void nameCaller::weightInit(bool isAbnormal)//初始化权重 isAbnormal标明�
 void nameCaller::closeEvent(QCloseEvent* event)
 {
     saveMemberDataToFile(QCoreApplication::applicationDirPath() + "/list.dcf");
+}
+
+
+void NameCallerCore::setMemberData(std::vector<MemberData> memberData)
+{
+    NameCallerCore::members = memberData;
+}
+
+void NameCallerCore::setCallerMode(int mode)
+{
+    NameCallerCore::callerMode = mode;
+}
+
+bool NameCallerCore::initMemberWeight(bool forceToZero)//初始化权重
+{
+    //为每个成员分配权重
+    if (memberData.size() == 0)
+        return false;
+    for (auto n_member : members)
+    {
+        if (forceToZero == true)
+            n_member.weight = 0;
+        else
+        {
+            if (callerMode == 0)
+                n_member.weight = members.size() / 2 + 1;
+            else
+                n_member.weight = 1;
+        }
+    }
+    return true;
 }

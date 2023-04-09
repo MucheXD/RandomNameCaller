@@ -175,15 +175,16 @@ QString Network::getHttpHeader(QString header)
 	}
 }
 
-int8_t getMemberData(QString listFileName, std::vector<MemberData> *memberDataList)
+int8_t getMemberData(QString listFileName, std::vector<MemberData>* memberDataList)
 {
 	QFile listDataFile;
 	listDataFile.setFileName(listFileName);
 	if (!listDataFile.open(QIODevice::ReadOnly) || listDataFile.size() >= 0x100000)
 		return -1;//无法打开或文件大小超过1MB的情况为异常
 	QString mtdTextData = listDataFile.readAll();
+
 	QString nSubBlockText;
-	nSubBlockText = qText_Between(mtdTextData,"<manifest>","</manifest>");
+	nSubBlockText = qText_Between(mtdTextData, "<manifest>", "</manifest>");
 	QRegularExpression regExp;
 	regExp.setPattern("(?<=\\[for=)\\S*(?=\\])");
 	if (regExp.match(nSubBlockText).captured() != PROGRAMTEXTID)
@@ -200,22 +201,19 @@ int8_t getMemberData(QString listFileName, std::vector<MemberData> *memberDataLi
 	QByteArray mainData = QByteArray::fromBase64(nSubBlockText.toUtf8());
 	nSubBlockText.clear();
 	nSubBlockText.resize(0);
+
 	const QByteArray eptKeyWord = mainData.left(eptBlocks);
 	mainData.remove(0, eptBlocks);
-	int aa = mainData.size();
 	for (int nPos = 0; nPos < mainData.size(); nPos++)
-		if(mainData[nPos]!='\0')
-			mainData[nPos] ^= eptKeyWord[nPos / bytesPerEptBlock];//再次异或比特，获得原数据
-	int nPos = 0;
-	for (nPos = 0; nPos < bytesPerEptBlock && mainData[mainData.size() - nPos - 1] != '\0'; nPos++) {};
-	if (nPos < bytesPerEptBlock && nPos >= 0)
-		mainData.resize(mainData.size() - nPos - 1);//将末尾原先因对齐而增加的字节去除，以\0为标志
+		mainData[nPos] ^= eptKeyWord[nPos / bytesPerEptBlock];//再次异或比特，获得原数据
+	for (int nCount=0; nCount < mainData.size() && mainData[mainData.size() - 1] != '}'; nCount++)
+		mainData.resize(mainData.size() - 1);//去除对齐用数据，以'}'为界
 	//读主数据体(JSON格式)
 	QJsonDocument jsondoc;
 	QJsonParseError jsonErrorChecker;
 	jsondoc = QJsonDocument::fromJson(mainData, &jsonErrorChecker);
 	if (jsonErrorChecker.error != 0)
-		return 0x0F00 + jsonErrorChecker.error;
+		return 0xA0 + jsonErrorChecker.error;
 	QJsonObject jsonobj_data = jsondoc.object();
 	int lastRunningMode = jsonobj_data.value("LastRunningMode").toInt();//TODO 此处忽略了LastRunningMode的保存值，因为对应的功能未实现
 	QJsonArray jsonarr_memberData = jsonobj_data.value("MemberData").toArray();//memberData主数组 (/MemberData)
@@ -238,11 +236,10 @@ bool saveMemberData(QString fileName, const std::vector<MemberData> *memberData)
 	jsonobj_data.insert("LastRunningMode", "-1");
 	QJsonArray jsonarr_memberData;//memberData主数组 (/MemberData)
 
-	//UNSURE 23.4.3脱机编辑，未编译 at line294 line318 line329
 	for (auto n_memberData : *memberData)
 	{
 		QJsonObject jsonobj_indMember;//新建单成员子对象 (/data/)
-		jsonobj_indMember.insert("n", n_memberData.name);
+		jsonobj_indMember.insert("n", n_memberData.name.toUtf8().data());
 		jsonobj_indMember.insert("w", n_memberData.weight);
 		jsonarr_memberData.append(jsonobj_indMember);
 	}
@@ -273,7 +270,7 @@ bool saveMemberData(QString fileName, const std::vector<MemberData> *memberData)
 	listDataFile.setFileName(fileName);
 	if (!listDataFile.open(QIODevice::ReadWrite | QIODevice::Truncate))
 		return false;
-	listDataFile.write(mtdStructText.toUtf8().toStdString().c_str());
+	listDataFile.write(mtdStructText.toUtf8());
 	listDataFile.close();
 	return true;
 }
